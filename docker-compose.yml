@@ -1,6 +1,6 @@
 services:
   pet-service:
-    image: spring-petclinic:8.8.8
+    image: spring-petclinic:10.10.10
     environment:
       OTEL_SERVICE_NAME: "pet-service"
       OTEL_RESOURCE_ATTRIBUTES: "service=pet-service,env=dev"
@@ -10,12 +10,12 @@ services:
       OTEL_METRICS_EXPORTER: "otlp"
       OTEL_TRACES_EXPORTER: "otlp"
     ports:
-      - "8080:8080"
+      - "8888:8888"
     depends_on:
       collector:
         condition: service_started
-      mysql:
-        condition: service_healthy
+      # mysql:
+      #   condition: service_healthy
 
 
   collector:
@@ -102,20 +102,20 @@ services:
       - "9411:9411"
 
 
-  mysql:
-    image: 'mysql:latest'
-    ports:
-      - "3306:3306"
-    environment:
-        MYSQL_ROOT_PASSWORD: petclinic
-        MYSQL_USER: petclinic
-        MYSQL_PASSWORD: petclinic
-        MYSQL_DATABASE: petclinic
-    volumes:
-      - "./conf.d:/etc/mysql/conf.d:ro"
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "--silent"]
-      retries: 1
+  # mysql:
+  #   image: 'mysql:latest'
+  #   ports:
+  #     - "3306:3306"
+  #   environment:
+  #       MYSQL_ROOT_PASSWORD: petclinic
+  #       MYSQL_USER: petclinic
+  #       MYSQL_PASSWORD: petclinic
+  #       MYSQL_DATABASE: petclinic
+  #   volumes:
+  #     - "./conf.d:/etc/mysql/conf.d:ro"
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "--silent"]
+  #     retries: 1
 
 #  postgres:
 #    image: postgres:16.3

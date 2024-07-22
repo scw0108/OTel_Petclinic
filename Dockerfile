@@ -5,3 +5,6 @@
 #ENTRYPOINT java -javaagent:/opentelemetry-javaagent.jar -jar /petclinic.jar
 #
 #
+FROM otel/opentelemetry-collector-contrib:0.101.0
+
+COPY ./docker/collector/config.yml /etc/otelcol-contrib/config.yml

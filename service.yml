@@ -1,0 +1,27 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: petclinic01
+  annotations:
+    run.googleapis.com/launch-stage: BETA
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/container-dependencies: "{app:[collector]}"
+    spec:
+      containers:
+      - image: asia-east1-docker.pkg.dev/careful-striker-429807-p1/run-otel/spring-petclinic:10.10.10
+        name: app
+        ports:
+        - containerPort: 8080
+        env:
+        - name: "OTEL_EXPORTER_OTLP_ENDPOINT"
+          value: "http://localhost:4317"
+      - image: asia-east1-docker.pkg.dev/careful-striker-429807-p1/run-otel/opentel
+        name: collector
+        startupProbe:
+          httpGet:
+            path: /
+            port: 13133
+

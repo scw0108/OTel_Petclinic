@@ -16,7 +16,7 @@
   gradle.startParameter.excludedTaskNames += [ "checkFormatAot", "checkFormatAotTest" ]
 
   group = 'org.springframework.samples'
-  version = '8.8.8'
+  version = '10.10.10'
 
   java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -117,7 +117,7 @@
         image = 'gcr.io/distroless/java17-debian12'
         platforms {
           platform {
-            architecture = 'arm64'
+            architecture = 'amd64'
             os = 'linux'
           }
         }
