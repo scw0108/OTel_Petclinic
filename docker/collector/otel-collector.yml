@@ -7,7 +7,7 @@
 #       scrape_configs:
 #         - job_name: 'otelcol'
 #           static_configs:
-#             - targets: ['0.0.0.:8889']
+#             - targets: ['0.0.0.:8888']
 
 # processors:
 #   # batch metrics before sending to reduce API usage
@@ -94,11 +94,10 @@ processors:
 exporters:
   googlemanagedprometheus: # Note: this is intentionally left blank   
 
-  googlecloud: # Note: this is intentionally left blank
-
   googlecloud:
     log:
       default_log_name: my-sample-app
+  
 
 extensions:
   health_check:
@@ -108,13 +107,13 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      gprocessors: [resourcedetection]
+      processors: [resourcedetection]
       exporters: [googlecloud]
     metrics:
       receivers: [otlp]
       processors: [batch, memory_limiter, resourcedetection, resource]
       exporters: [googlemanagedprometheus]
     logs:
-      receivers: [filelog, otlp]
+      receivers: [otlp]
       processors: [resourcedetection]
       exporters: [googlecloud]

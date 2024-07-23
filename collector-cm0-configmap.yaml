@@ -1,10 +1,64 @@
 apiVersion: v1
-data:
-  otel-collector.yml: ./docker/collector/otel-collector.yml
 kind: ConfigMap
 metadata:
-  annotations:
-    use-subpath: "true"
+  name: collector-cm0
   labels:
     io.kompose.service: collector
-  name: collector-cm0
+data:
+  otel-collector.yml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+
+    processors:
+      batch:
+        send_batch_max_size: 200
+        send_batch_size: 200
+        timeout: 5s
+
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 65
+        spike_limit_percentage: 20
+
+      resourcedetection:
+        detectors: [env, gcp]
+        timeout: 2s
+        override: false
+
+      resource:
+        attributes:
+          - key: service.instance.id
+            from_attribute: faas.id
+            action: upsert
+          - key: service.name
+            value: "$K_SERVICE"
+            action: insert
+
+    exporters:
+      googlemanagedprometheus:
+
+      googlecloud:
+        log:
+          default_log_name: my-sample-app
+
+    extensions:
+      health_check:
+
+    service:
+      extensions: [health_check]
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [resourcedetection]
+          exporters: [googlecloud]
+        metrics:
+          receivers: [otlp]
+          processors: [batch, memory_limiter, resourcedetection, resource]
+          exporters: [googlemanagedprometheus]
+        logs:
+          receivers: [otlp]
+          processors: [resourcedetection]
+          exporters: [googlecloud]
