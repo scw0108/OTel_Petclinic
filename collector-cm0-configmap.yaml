@@ -14,14 +14,31 @@ data:
 
     processors:
       batch:
-        send_batch_max_size: 200
-        send_batch_size: 200
-        timeout: 5s
+        send_batch_max_size: 100
+        send_batch_size: 100
+        timeout: 10s
 
       memory_limiter:
         check_interval: 1s
         limit_percentage: 65
         spike_limit_percentage: 20
+
+      transform:
+        metric_statements:
+        - context: datapoint
+          statements:
+          - set(attributes["exported_location"], attributes["location"])
+          - delete_key(attributes, "location")
+          - set(attributes["exported_cluster"], attributes["cluster"])
+          - delete_key(attributes, "cluster")
+          - set(attributes["exported_namespace"], attributes["namespace"])
+          - delete_key(attributes, "namespace")
+          - set(attributes["exported_job"], attributes["job"])
+          - delete_key(attributes, "job")
+          - set(attributes["exported_instance"], attributes["instance"])
+          - delete_key(attributes, "instance")
+          - set(attributes["exported_project_id"], attributes["project_id"])
+          - delete_key(attributes, "project_id")
 
       resourcedetection:
         detectors: [env, gcp]
@@ -37,9 +54,23 @@ data:
             value: "$K_SERVICE"
             action: insert
 
+      metricstransform:
+        transforms:
+          - include: prometheus.googleapis.com/queueSize_ratio/gauge
+            action: update
+            operations:
+              - action: toggle_scalar_data_type
+          # - include: prometheus.googleapis.com/http_server_active_requests/gauge
+          #   action: update
+          #   operations:
+          #     - action: toggle_scalar_data_type
+          - include: prometheus.googleapis.com/runtime_jvm_memory_pool_bytes/gauge
+            action: update
+            operations:
+              - action: toggle_scalar_data_type 
+
     exporters:
       googlemanagedprometheus:
-
       googlecloud:
         log:
           default_log_name: my-sample-app
@@ -56,7 +87,7 @@ data:
           exporters: [googlecloud]
         metrics:
           receivers: [otlp]
-          processors: [batch, memory_limiter, resourcedetection, resource]
+          processors: [batch, memory_limiter, resourcedetection, resource, metricstransform]
           exporters: [googlemanagedprometheus]
         logs:
           receivers: [otlp]
