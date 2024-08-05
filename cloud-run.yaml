@@ -1,0 +1,74 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: pet-otel-demo
+  annotations:
+    run.googleapis.com/ingress: all
+    run.googleapis.com/ingress-status: all
+  labels:
+    cloud.googleapis.com/location: asia-east1
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/maxScale: '4'
+        autoscaling.knative.dev/minScale: '1'
+        run.googleapis.com/cpu-throttling: 'false'
+        run.googleapis.com/startup-cpu-boost: 'true'
+      labels:
+        run.googleapis.com/startupProbeType: Custom
+    spec:
+      containerConcurrency: 100
+      timeoutSeconds: 300
+      serviceAccountName: otel-demo@otel-431601.iam.gserviceaccount.com
+      containers:
+        - name: petclinic
+          image: asia-east1-docker.pkg.dev/otel-431601/otel-images/petclinic:10.10.10
+          ports:
+            - containerPort: 8080
+          env:
+            - name: spring.profiles.active
+              value: test,gcp
+            - name: logging.level.com.example.otel
+              value: debug
+            - name: JAVA_TOOL_OPTIONS
+              value: -Djava.security.egd=file:/dev/./urandom -Dfile.encoding=UTF-8
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://localhost:4317"
+            - name: OTEL_SERVICE_NAME
+              value: "pet-otel-demo"
+            - name: OTEL_TRACES_SAMPLER
+              value: "always_on"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 10
+            timeoutSeconds: 1
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 10
+            timeoutSeconds: 1
+        - name: otel-collector
+          image: asia-east1-docker.pkg.dev/otel-431601/otel-images/otel-collector  # 替換為您的 Artifact Registry 路徑和版本
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128Mi
+  traffic:
+    - percent: 100
+      latestRevision: true
