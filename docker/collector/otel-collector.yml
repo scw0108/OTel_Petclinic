@@ -1,119 +1,185 @@
+# # receivers:
+# #   otlp:
+# #     protocols:
+# #       grpc:
+# #   prometheus:
+# #     config:
+# #       scrape_configs:
+# #         - job_name: 'otelcol'
+# #           static_configs:
+# #             - targets: ['0.0.0.:8888']
+
+# # processors:
+# #   # batch metrics before sending to reduce API usage
+# #   batch:
+# #     send_batch_max_size: 1000
+# #     send_batch_size: 100
+# #     timeout: 10s
+
+# # exporters:
+# #   prometheusremotewrite:
+# #     endpoint: "http://prometheus:9090/api/v1/write"
+# #     tls:
+# #       insecure: true
+
+# #   otlp/jaeger:
+# #     endpoint: "http://jaeger:4317"
+# #     tls:
+# #       insecure: true
+
+# #   zipkin:
+# #     endpoint: http://zipkin:9411/api/v2/spans
+# #     format: proto
+
+# #   otlp/tempo:
+# #     endpoint: "http://tempo:4317"
+# #     tls:
+# #       insecure: true
+
+# #   loki:
+# #     endpoint: "http://loki:3100/loki/api/v1/push"
+
+# # service:
+# #   pipelines:
+# #     metrics:
+# #       receivers: [otlp]
+# #       processors: [batch]
+# #       exporters: [prometheusremotewrite]
+# #     traces:
+# #       receivers: [otlp]
+# #       processors: [batch]
+# #       exporters: [otlp/jaeger,zipkin,otlp/tempo]
+# #     logs:
+# #       receivers: [otlp]
+# #       processors: [batch]
+# #       exporters: [loki]
+
+
 # receivers:
 #   otlp:
 #     protocols:
 #       grpc:
-#   prometheus:
-#     config:
-#       scrape_configs:
-#         - job_name: 'otelcol'
-#           static_configs:
-#             - targets: ['0.0.0.:8888']
+#       http:
 
 # processors:
-#   # batch metrics before sending to reduce API usage
 #   batch:
-#     send_batch_max_size: 1000
-#     send_batch_size: 100
-#     timeout: 10s
+#     # batch metrics before sending to reduce API usage
+#     send_batch_max_size: 200
+#     send_batch_size: 200
+#     timeout: 5s
+
+#   memory_limiter:
+#     # drop metrics if memory usage gets too high
+#     check_interval: 1s
+#     limit_percentage: 65
+#     spike_limit_percentage: 20
+
+#   # automatically detect Cloud Run resource metadata                                                                                                                                               
+#   resourcedetection:
+#     detectors: [env, gcp]
+#     timeout: 2s
+#     override: false
+
+#   resource:
+#     attributes:
+#       # add instance_id as a resource attribute                                                                                                                                                    
+#     - key: service.instance.id
+#       from_attribute: faas.id
+#       action: upsert
+#       # parse service name from K_SERVICE Cloud Run variable                                                                                                                                       
+#     - key: service.name
+#       value: ${env:K_SERVICE}
+#       action: insert
 
 # exporters:
-#   prometheusremotewrite:
-#     endpoint: "http://prometheus:9090/api/v1/write"
-#     tls:
-#       insecure: true
+#   googlemanagedprometheus: # Note: this is intentionally left blank   
 
-#   otlp/jaeger:
-#     endpoint: "http://jaeger:4317"
-#     tls:
-#       insecure: true
+#   googlecloud:
+#     log:
+#       default_log_name: my-sample-app
+  
 
-#   zipkin:
-#     endpoint: http://zipkin:9411/api/v2/spans
-#     format: proto
-
-#   otlp/tempo:
-#     endpoint: "http://tempo:4317"
-#     tls:
-#       insecure: true
-
-#   loki:
-#     endpoint: "http://loki:3100/loki/api/v1/push"
+# extensions:
+#   health_check:
 
 # service:
+#   extensions: [health_check]
 #   pipelines:
-#     metrics:
-#       receivers: [otlp]
-#       processors: [batch]
-#       exporters: [prometheusremotewrite]
 #     traces:
 #       receivers: [otlp]
-#       processors: [batch]
-#       exporters: [otlp/jaeger,zipkin,otlp/tempo]
+#       processors: [resourcedetection]
+#       exporters: [googlecloud]
+#     metrics:
+#       receivers: [otlp]
+#       processors: [batch, memory_limiter, resourcedetection, resource]
+#       exporters: [googlemanagedprometheus]
 #     logs:
 #       receivers: [otlp]
-#       processors: [batch]
-#       exporters: [loki]
+#       processors: [resourcedetection]
+#       exporters: [googlecloud]
 
 
 receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: 0.0.0.0:4317
       http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  googlecloud:
+    log:
+      default_log_name: opentelemetry.io/collector-exported-log
+  sapm:
+    access_token: xCo8YQ6OFc7JR0-_lhQsIw
+    access_token_passthrough: true
+    endpoint: https://ingest.us1.signalfx.com/v2/trace
+    max_connections: 100
+    num_workers: 8
+  # signalfx:
+  #   access_token: xCo8YQ6OFc7JR0-_lhQsIw
+  #   api_url: https://api.us1.signalfx.com:6060
+  #   ingest_url: https://ingest.us1.signalfx.com:9943
+  #   # Use instead when sending to gateway (http forwarder extension ingress endpoint)
+  #   #api_url: http://${SPLUNK_GATEWAY_URL}:6060
+  #   #ingest_url: http://${SPLUNK_GATEWAY_URL}:9943
+  #   sync_host_metadata: true
+  signalfx:
+      access_token: xCo8YQ6OFc7JR0-_lhQsIw
+      realm: us1
+extensions:
+  health_check:
+  pprof:
+  zpages:
 
 processors:
-  batch:
-    # batch metrics before sending to reduce API usage
-    send_batch_max_size: 200
-    send_batch_size: 200
-    timeout: 5s
-
   memory_limiter:
-    # drop metrics if memory usage gets too high
     check_interval: 1s
     limit_percentage: 65
     spike_limit_percentage: 20
-
-  # automatically detect Cloud Run resource metadata                                                                                                                                               
+  batch:
+  filter/drop_actuator:
+    traces:
+      span:
+        - attributes["http.route"] == "/actuator/prometheus"
+        - attributes["http.route"] == "/actuator/health"
   resourcedetection:
-    detectors: [env, gcp]
-    timeout: 2s
-    override: false
-
-  resource:
-    attributes:
-      # add instance_id as a resource attribute                                                                                                                                                    
-    - key: service.instance.id
-      from_attribute: faas.id
-      action: upsert
-      # parse service name from K_SERVICE Cloud Run variable                                                                                                                                       
-    - key: service.name
-      value: ${env:K_SERVICE}
-      action: insert
-
-exporters:
-  googlemanagedprometheus: # Note: this is intentionally left blank   
-
-  googlecloud:
-    log:
-      default_log_name: my-sample-app
-  
-
-extensions:
-  health_check:
+    detectors: [gcp, env]
+    timeout: 10s
 
 service:
-  extensions: [health_check]
+  extensions: [health_check, pprof, zpages]
   pipelines:
     traces:
       receivers: [otlp]
-      processors: [resourcedetection]
-      exporters: [googlecloud]
+      processors: [memory_limiter, batch, filter/drop_actuator, resourcedetection]
+      exporters: [sapm]
     metrics:
       receivers: [otlp]
-      processors: [batch, memory_limiter, resourcedetection, resource]
-      exporters: [googlemanagedprometheus]
-    logs:
-      receivers: [otlp]
-      processors: [resourcedetection]
-      exporters: [googlecloud]
+      processors: [memory_limiter, batch, resourcedetection]
+      exporters: [signalfx]
+    # logs:
+    #   receivers: [otlp]
+    #   processors: [memory_limiter, batch, resourcedetection]
+    #   exporters: [googlecloud]

@@ -10,7 +10,23 @@ exporters:
   googlecloud:
     log:
       default_log_name: opentelemetry.io/collector-exported-log
-
+  sapm:
+    access_token: xCo8YQ6OFc7JR0-_lhQsIw
+    access_token_passthrough: true
+    endpoint: https://ingest.us1.signalfx.com/v2/trace
+    max_connections: 100
+    num_workers: 8
+  # signalfx:
+  #   access_token: xCo8YQ6OFc7JR0-_lhQsIw
+  #   api_url: https://api.us1.signalfx.com:6060
+  #   ingest_url: https://ingest.us1.signalfx.com:9943
+  #   # Use instead when sending to gateway (http forwarder extension ingress endpoint)
+  #   #api_url: http://${SPLUNK_GATEWAY_URL}:6060
+  #   #ingest_url: http://${SPLUNK_GATEWAY_URL}:9943
+  #   sync_host_metadata: true
+  signalfx:
+      access_token: xCo8YQ6OFc7JR0-_lhQsIw
+      realm: us1
 extensions:
   health_check:
   pprof:
@@ -28,7 +44,7 @@ processors:
         - attributes["http.route"] == "/actuator/prometheus"
         - attributes["http.route"] == "/actuator/health"
   resourcedetection:
-    detectors: [gcp]
+    detectors: [gcp, env]
     timeout: 10s
 
 service:
@@ -37,11 +53,11 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch, filter/drop_actuator, resourcedetection]
-      exporters: [googlecloud]
+      exporters: [sapm]
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch, resourcedetection]
-      exporters: [googlecloud]
+      exporters: [signalfx]
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch, resourcedetection]
